@@ -218,8 +218,50 @@
   @apply text-primary underline underline-offset-2;
 }
 
+/* [기술적 제약 사항 2: PDF 저장 방식 및 @media print] */
 @media print {
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
   body {
-    background: #fff;
+    background: #ffffff !important;
+    color: #111827 !important;
+    font-size: 11pt;
+    line-height: 1.6;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  .markdown-note {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .markdown-note h1 {
+    font-size: 18pt !important;
+    margin-bottom: 12pt !important;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  .markdown-note h2 {
+    font-size: 14pt !important;
+    margin-top: 16pt !important;
+    margin-bottom: 8pt !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  .markdown-note h3 {
+    font-size: 12pt !important;
+    margin-top: 12pt !important;
+    margin-bottom: 6pt !important;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  .markdown-note table,
+  .markdown-note blockquote,
+  .markdown-note pre {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 }

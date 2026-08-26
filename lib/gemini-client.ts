@@ -1,0 +1,201 @@
+import { GoogleGenerativeAI, type Part } from "@google/generative-ai"
+
+/**
+ * [기술적 제약 사항 4: 용량 차단 로직]
+ * 업로드된 파일 합계 10MB 또는 텍스트 15,000자 초과 여부를 사전 검사
+ */
+export const MAX_TOTAL_UPLOAD_BYTES = 10 * 1024 * 1024 // 10MB
+export const MAX_TEXT_LENGTH = 15000 // 15,000자
+
+export const GEMINI_MODEL_NAME = "gemini-1.5-flash"
+
+export interface QuizQuestion {
+  id: number
+  question: string
+  options: string[]
+  answer: number // 1-based index or 0-based index matching options
+  explanation: string
+}
+
+export class ValidationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "ValidationError"
+  }
+}
+
+/**
+ * [기술적 제약 사항 4] 업로드 파일 및 텍스트 용량 사전 검증
+ */
+export function validateUpload(files: File[], textContent?: string): void {
+  if (!files || files.length === 0) {
+    throw new ValidationError("최소 하나 이상의 PDF 파일을 업로드해주세요.")
+  }
+
+  const totalBytes = files.reduce((acc, file) => acc + file.size, 0)
+  if (totalBytes > MAX_TOTAL_UPLOAD_BYTES) {
+    throw new ValidationError(
+      "일회당 처리 가능한 분량을 초과했습니다. 분석을 차단합니다. (10MB 초과)"
+    )
+  }
+
+  if (textContent && textContent.length > MAX_TEXT_LENGTH) {
+    throw new ValidationError(
+      "일회당 처리 가능한 분량을 초과했습니다. 분석을 차단합니다. (15,000자 초과)"
+    )
+  }
+}
+
+/**
+ * 브라우저 File 객체를 Base64 인코딩된 Gemini Part 객체로 변환
+ */
+export async function fileToGenerativePart(file: File): Promise<Part> {
+  const base64EncodedDataPromise = new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        const base64Data = reader.result.split(",")[1]
+        resolve(base64Data)
+      } else {
+        reject(new Error("파일 변환에 실패했습니다."))
+      }
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+
+  return {
+    inlineData: {
+      data: await base64EncodedDataPromise,
+      mimeType: file.type || "application/pdf",
+    },
+  }
+}
+
+/**
+ * Gemini API Key 확인 헬퍼
+ */
+function getApiKey(customApiKey?: string): string {
+  const apiKey =
+    customApiKey ||
+    process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+    process.env.GEMINI_API_KEY
+
+  if (!apiKey || apiKey.trim() === "" || apiKey === "your_gemini_api_key_here") {
+    throw new Error(
+      "Gemini API 키가 설정되지 않았습니다. .env.local에 NEXT_PUBLIC_GEMINI_API_KEY를 설정해주세요."
+    )
+  }
+  return apiKey.trim()
+}
+
+/**
+ * [기술적 제약 사항 1: 백엔드/서버리스 금지]
+ * 브라우저 클라이언트에서 직접 Gemini API(gemini-1.5-flash) 호출하여 통합 정리 노트 생성
+ */
+export async function generateSummaryClient(
+  files: File[],
+  customApiKey?: string
+): Promise<string> {
+  // [기술적 제약 사항 4] 사전 용량 검증
+  validateUpload(files)
+
+  const apiKey = getApiKey(customApiKey)
+  const genAI = new GoogleGenerativeAI(apiKey)
+  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL_NAME })
+
+  const fileParts = await Promise.all(files.map(fileToGenerativePart))
+
+  const prompt = `당신은 대학 강의 자료를 정리해주는 전문 학습 도우미입니다.
+사용자가 업로드한 여러 개의 PDF 문서를 종합하여, 시험 대비에 적합한 하나의 통합 정리 노트를 한국어 Markdown 형식으로 작성하세요.
+
+작성 규칙:
+- 반드시 순수 Markdown 으로만 작성합니다. (코드펜스 \`\`\` 로 전체를 감싸지 마세요)
+- 여러 문서에 걸친 내용을 하나의 흐름으로 통합하고 누락 없이 중복은 제거합니다.
+- 표나 도표의 핵심 수치가 있으면 Markdown 표로 정리합니다.
+- 아래 구조를 따르세요:
+  # 다중 PDF 통합 정리 노트
+  ## 1. 문서 전체 개요
+  ## 2. 주요 주제별 핵심 정리 (주제별 소제목 + 세부 불릿)
+  ## 3. 핵심 용어 정리
+  ## 4. 종합 결론
+- 문서에 실제로 존재하는 내용만 사용하고, 근거 없는 내용을 지어내지 마세요.
+- 총 ${files.length}개의 PDF 문서 내용을 빠짐없이 통합 정리해 주세요.`
+
+  const response = await model.generateContent([prompt, ...fileParts])
+  const resultText = response.response.text()
+
+  return resultText
+}
+
+/**
+ * [기술적 제약 사항 1: 백엔드/서버리스 금지 & 응답 제약 JSON]
+ * 브라우저 클라이언트에서 직접 Gemini API(gemini-1.5-flash) 호출하여 10문항 객관식 퀴즈 생성
+ */
+export async function generateQuizClient(
+  files: File[],
+  customApiKey?: string
+): Promise<QuizQuestion[]> {
+  // [기술적 제약 사항 4] 사전 용량 검증
+  validateUpload(files)
+
+  const apiKey = getApiKey(customApiKey)
+  const genAI = new GoogleGenerativeAI(apiKey)
+  const model = genAI.getGenerativeModel({
+    model: GEMINI_MODEL_NAME,
+    generationConfig: {
+      responseMimeType: "application/json",
+    },
+  })
+
+  const fileParts = await Promise.all(files.map(fileToGenerativePart))
+
+  const prompt = `당신은 대학 강의 자료로 시험 문제를 출제하는 전문 출제자입니다.
+사용자가 업로드한 여러 개의 PDF 문서 내용을 바탕으로, 실전 대비용 객관식 문제 10개를 한국어로 출제하세요.
+
+[응답 제약]
+퀴즈 생성 시 프론트엔드 채점 로직이 깨지지 않도록, 반드시 아래 JSON 배열 포맷만 출력해야 합니다:
+[
+  {
+    "id": 1,
+    "question": "문제 내용",
+    "options": ["1번 보기", "2번 보기", "3번 보기", "4번 보기"],
+    "answer": 1,
+    "explanation": "해설 내용"
+  }
+]
+
+출제 규칙:
+1. 정확히 10문항(id는 1부터 10까지 고유 숫자)을 생성하세요.
+2. 각 문항은 정확히 4개의 보기(options)를 가져야 합니다.
+3. answer 필드는 1-based index (1, 2, 3, 4 중 정답 번호)로 지정하세요.
+4. explanation 에는 왜 그 보기가 정답인지 상세한 해설을 담으세요.
+5. 문서의 핵심 개념, 정의, 수치, 응용 사례를 골고루 다루어 난이도를 다양하게 구성하세요.
+6. JSON 이외의 설명이나 마크다운 백틱 문장을 일체 포함하지 마세요.`
+
+  const response = await model.generateContent([prompt, ...fileParts])
+  let rawJson = response.response.text().trim()
+
+  // 마크다운 코드블록 래핑 방어 처리
+  if (rawJson.startsWith("```json")) {
+    rawJson = rawJson.replace(/^```json\s*/, "").replace(/\s*```$/, "")
+  } else if (rawJson.startsWith("```")) {
+    rawJson = rawJson.replace(/^```\s*/, "").replace(/\s*```$/, "")
+  }
+
+  const parsed = JSON.parse(rawJson)
+  if (!Array.isArray(parsed)) {
+    throw new Error("AI 응답이 배열 형식이 아닙니다.")
+  }
+
+  // 1-based index 정규화 및 id 보장
+  return parsed.map((item, idx) => ({
+    id: typeof item.id === "number" ? item.id : idx + 1,
+    question: String(item.question || ""),
+    options: Array.isArray(item.options)
+      ? item.options.map(String)
+      : ["보기 1", "보기 2", "보기 3", "보기 4"],
+    answer: typeof item.answer === "number" ? item.answer : 1,
+    explanation: String(item.explanation || ""),
+  }))
+}
