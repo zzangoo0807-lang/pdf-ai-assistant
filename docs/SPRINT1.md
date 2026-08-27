@@ -10,6 +10,7 @@
 | :--- | :--- |
 | **관련 제약 사항 1** | **백엔드/서버리스 금지**: Vercel Serverless (4.5MB/10s) 제한 회피를 위해 클라이언트 사이드 직접 호출 |
 | **관련 제약 사항 4** | **클라이언트 사전 용량 차단**: 파일 10MB 초과 및 텍스트 15,000자 초과 사전 차단 |
+| **안전성 강화** | **다중 모델 자동 폴백**: Google AI Studio 모델 404 및 일시적 과부하 발생 시 대체 모델 자동 시도 |
 
 ---
 
@@ -25,6 +26,8 @@
   - 브라우저 `File` 객체들을 `inlineData`(Base64) 파트로 변환하는 비동기 유틸 작성
   - 파일 총합 10MB 초과 검사 및 텍스트 15,000자 초과 검사 로직 구현
   - 검증 실패 시 API 호출 사전 차단 및 한국어 에러 처리
+- [x] **1.4. 모델 404/과부하 자동 폴백 방어 구축**
+  - `CANDIDATE_GEMINI_MODELS` (`gemini-1.5-flash`, `gemini-1.5-flash-latest`, `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-1.5-pro` 등) 순차 시도 로직 연동
 
 ---
 
@@ -33,8 +36,8 @@
 - **Gemini Client Helper**: [lib/gemini-client.ts](file:///c:/Users/zzang/Desktop/%EC%A7%81%EB%AC%B4/pdf-ai-assistant/lib/gemini-client.ts)
   - `validateUpload()`: 사전 용량 차단 로직
   - `fileToGenerativePart()`: Base64 Part 변환 유틸
-  - `generateSummaryClient()`: 요약 생성 클라이언트 함수
-  - `generateQuizClient()`: 퀴즈 생성 클라이언트 함수
+  - `generateSummaryClient()`: 요약 생성 클라이언트 함수 (자동 폴백 포함)
+  - `generateQuizClient()`: 퀴즈 생성 클라이언트 함수 (자동 폴백 포함)
 - **UI 연동**: [components/pdf-study-app.tsx](file:///c:/Users/zzang/Desktop/%EC%A7%81%EB%AC%B4/pdf-ai-assistant/components/pdf-study-app.tsx)
 - **환경 변수 가이드**: [.env.example](file:///c:/Users/zzang/Desktop/%EC%A7%81%EB%AC%B4/pdf-ai-assistant/.env.example)
 
@@ -44,6 +47,7 @@
 
 - [x] Next.js 서버 라우트를 거치지 않고 브라우저에서 Gemini 1.5 Flash 모델로 PDF 데이터가 전송되는 클라이언트 파이프라인 구축 완료
 - [x] 10MB를 초과하는 파일 선택 시 API 요청 전 단계에서 차단 동작 확인
+- [x] 모델 404 및 일시적 서버 과부하 시 대체 모델 자동 전환 방어 로직 검증 완료
 - [x] TypeScript 컴파일 (`npx tsc --noEmit`) 무결성 및 단위 검증 테스트 통과
 
 ---
