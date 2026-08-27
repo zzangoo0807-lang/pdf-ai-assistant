@@ -2,10 +2,10 @@ import { GoogleGenerativeAI, type Part } from "@google/generative-ai"
 
 /**
  * [기술적 제약 사항 4: 용량 차단 로직]
- * 업로드된 파일 합계 10MB 또는 텍스트 15,000자 초과 여부를 사전 검사
+ * 업로드된 파일 합계 50MB 또는 텍스트 100,000자 초과 여부를 사전 검사
  */
-export const MAX_TOTAL_UPLOAD_BYTES = 10 * 1024 * 1024 // 10MB
-export const MAX_TEXT_LENGTH = 15000 // 15,000자
+export const MAX_TOTAL_UPLOAD_BYTES = 50 * 1024 * 1024 // 50MB (기존 10MB에서 확장)
+export const MAX_TEXT_LENGTH = 100000 // 100,000자 (기존 15,000자에서 확장)
 
 export const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
 export const GEMINI_MODEL_NAME = DEFAULT_GEMINI_MODEL
@@ -46,13 +46,13 @@ export function validateUpload(files: File[], textContent?: string): void {
   const totalBytes = files.reduce((acc, file) => acc + file.size, 0)
   if (totalBytes > MAX_TOTAL_UPLOAD_BYTES) {
     throw new ValidationError(
-      "일회당 처리 가능한 분량을 초과했습니다. 분석을 차단합니다. (10MB 초과)"
+      "일회당 처리 가능한 분량을 초과했습니다. 분석을 차단합니다. (50MB 초과)"
     )
   }
 
   if (textContent && textContent.length > MAX_TEXT_LENGTH) {
     throw new ValidationError(
-      "일회당 처리 가능한 분량을 초과했습니다. 분석을 차단합니다. (15,000자 초과)"
+      "일회당 처리 가능한 분량을 초과했습니다. 분석을 차단합니다. (100,000자 초과)"
     )
   }
 }

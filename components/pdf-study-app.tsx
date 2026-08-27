@@ -208,7 +208,7 @@ export function PdfStudyApp() {
     // [기술적 제약 사항 4: 용량 초과 차단]
     if (overLimit) {
       toast.error(
-        "일회당 처리 가능한 분량을 초과했습니다. 분석을 차단합니다. (10MB 초과)",
+        "일회당 처리 가능한 분량을 초과했습니다. 분석을 차단합니다. (50MB 초과)",
       )
       return
     }
@@ -362,7 +362,7 @@ export function PdfStudyApp() {
                 클릭하여 PDF 파일 선택 (여러 개 동시 선택 가능)
               </span>
               <span className="text-xs text-muted-foreground">
-                [용량 제한] 파일 합계 최대 10MB / 텍스트 15,000자 이내
+                [용량 제한] 파일 합계 최대 50MB / 텍스트 100,000자 이내
               </span>
               <input
                 id="pdf-input"
@@ -415,7 +415,7 @@ export function PdfStudyApp() {
                         : "text-muted-foreground"
                     }
                   >
-                    {formatBytes(totalSize)} / 10 MB
+                    {formatBytes(totalSize)} / 50 MB
                   </span>
                 </div>
               </div>
