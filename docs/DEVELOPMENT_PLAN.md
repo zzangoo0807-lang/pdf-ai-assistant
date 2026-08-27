@@ -25,7 +25,7 @@
 - **Language**: TypeScript 5+
 - **Styling**: Tailwind CSS, Vanilla CSS (`@media print` 커스텀 스타일)
 - **UI Components**: Radix UI / Shadcn UI (`Button`, `Card`, `Tabs`, `AlertDialog`, `Badge`, `Progress`, `Skeleton`, `Sonner`)
-- **AI SDK / API**: `@google/generative-ai` (브라우저 직접 호출, `gemini-1.5-flash` 모델)
+- **AI SDK / API**: `@google/generative-ai` (브라우저 직접 호출, `gemini-1.5-flash` 모델 기반 다중 모델 자동 폴백)
 - **Markdown Renderer**: `react-markdown`, `remark-gfm`
 - **Icon**: `lucide-react`
 
@@ -37,7 +37,7 @@
 
 | 스프린트 | 문서 링크 | 핵심 주제 | 진행 상태 |
 | :--- | :--- | :--- | :--- |
-| **Sprint 1** | [SPRINT1.md](file:///c:/Users/zzang/Desktop/%EC%A7%81%EB%AC%B4/pdf-ai-assistant/docs/SPRINT1.md) | 기반 아키텍처 및 클라이언트 AI 연동 계층 구축 (제약 1, 4) | ✅ 완료 (100%) |
+| **Sprint 1** | [SPRINT1.md](file:///c:/Users/zzang/Desktop/%EC%A7%81%EB%AC%B4/pdf-ai-assistant/docs/SPRINT1.md) | 기반 아키텍처 및 클라이언트 AI 연동 계층 구축 (제약 1, 4, 다중 모델 폴백) | ✅ 완료 (100%) |
 | **Sprint 2** | [SPRINT2.md](file:///c:/Users/zzang/Desktop/%EC%A7%81%EB%AC%B4/pdf-ai-assistant/docs/SPRINT2.md) | 핵심 모드 기능 구현 및 프롬프트 엔지니어링 (제약 3) | ✅ 완료 (100%) |
 | **Sprint 3** | [SPRINT3.md](file:///c:/Users/zzang/Desktop/%EC%A7%81%EB%AC%B4/pdf-ai-assistant/docs/SPRINT3.md) | 네이티브 인쇄 스타일링(@media print) 및 UI/UX 고도화 (제약 2) | ✅ 완료 (100%) |
 | **Sprint 4** | [SPRINT4.md](file:///c:/Users/zzang/Desktop/%EC%A7%81%EB%AC%B4/pdf-ai-assistant/docs/SPRINT4.md) | 예외 처리 완성, 통합 검증 및 문서화 | ✅ 완료 (100%) |
@@ -87,3 +87,4 @@ gantt
 | **Strict JSON & 셔플 채점 (Sprint 2)** | `cmd /c node test-sprint2.js` | JSON 백틱 방어, 고유 ID 채점/셔플 보존 통과 | ✅ PASS |
 | **인쇄 스타일 & UI 비활성화 (Sprint 3)** | CSS `@media print` / `isLoading` 상태 바인딩 | A4 규격 및 인쇄 은닉, 로딩 제어 적용 완료 | ✅ PASS |
 | **PRD 필수 4종 예외 (Sprint 4)** | Toast / AlertDialog / Disabled 상태 점검 | 4종 시나리오 100% 처리 확인 | ✅ PASS |
+| **Gemini 모델 폴백 시스템** | `lib/gemini-client.ts` / `components/pdf-study-app.tsx` | 404 및 과부하 시 대체 모델 자동전환 & 선택 UI 제공 | ✅ PASS |
