@@ -74,3 +74,16 @@ gantt
 | **제약 2** | 네이티브 인쇄 / `@media print` | `app/globals.css`, `components/pdf-study-app.tsx` | `window.print()` 호출, `@media print` A4 규격 및 `.print:hidden` 완벽 적용 |
 | **제약 3** | 고유 ID 기반 퀴즈 채점 & 셔플 리셋 | `components/pdf-study-app.tsx` | `q.id`를 키로 답안 저장, 셔플 시 `setUserAnswers({})` 초기화 |
 | **제약 4** | 용량 및 텍스트량 사전 차단 | `lib/gemini-client.ts`, `components/pdf-study-app.tsx` | 파일 10MB / 텍스트 15,000자 초과 검증 후 사전 throw 및 Alert 차단 |
+
+---
+
+## 6. 전체 스프린트 무결성 및 검증 현황 요약
+
+| 검증 영역 | 검증 명령어 및 도구 | 결과 | 상태 |
+| :--- | :--- | :--- | :--- |
+| **정적 타입 검사** | `cmd /c npx tsc --noEmit` | 컴파일 에러 0건 통과 | ✅ PASS |
+| **프로덕션 번들 빌드** | `cmd /c npm run build` | Next.js 16 Static 정적 생성 완료 | ✅ PASS |
+| **사전 용량 검증 (Sprint 1)** | `cmd /c npx tsx test-sprint1.js` | 10MB / 15,000자 초과 차단 4종 검증 통과 | ✅ PASS |
+| **Strict JSON & 셔플 채점 (Sprint 2)** | `cmd /c node test-sprint2.js` | JSON 백틱 방어, 고유 ID 채점/셔플 보존 통과 | ✅ PASS |
+| **인쇄 스타일 & UI 비활성화 (Sprint 3)** | CSS `@media print` / `isLoading` 상태 바인딩 | A4 규격 및 인쇄 은닉, 로딩 제어 적용 완료 | ✅ PASS |
+| **PRD 필수 4종 예외 (Sprint 4)** | Toast / AlertDialog / Disabled 상태 점검 | 4종 시나리오 100% 처리 확인 | ✅ PASS |
