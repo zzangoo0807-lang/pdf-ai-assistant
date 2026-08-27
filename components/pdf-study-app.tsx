@@ -65,6 +65,7 @@ export function PdfStudyApp() {
   const [apiKeyInput, setApiKeyInput] = useState("")
   const [showApiKeyInput, setShowApiKeyInput] = useState(false)
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_GEMINI_MODEL)
+  const [userRequirements, setUserRequirements] = useState<string>("")
   const inputRef = useRef<HTMLInputElement>(null)
 
   // 정리 모드 결과
@@ -154,7 +155,7 @@ export function PdfStudyApp() {
       // [기술적 제약 사항 4] 10MB / 15,000자 사전 차단 검증
       validateUpload(files)
 
-      const result = await generateSummaryClient(files, apiKeyInput, selectedModel)
+      const result = await generateSummaryClient(files, apiKeyInput, selectedModel, userRequirements)
       setSummaryText(result)
       toast.success("통합 정리 노트가 생성되었습니다.")
     } catch (err) {
@@ -183,7 +184,7 @@ export function PdfStudyApp() {
       // [기술적 제약 사항 4] 10MB / 15,000자 사전 차단 검증
       validateUpload(files)
 
-      const fetchedQuestions = await generateQuizClient(files, apiKeyInput, selectedModel)
+      const fetchedQuestions = await generateQuizClient(files, apiKeyInput, selectedModel, userRequirements)
       setQuestions(fetchedQuestions)
       toast.success("10개의 문제가 생성되었습니다.")
     } catch (err) {
@@ -420,6 +421,29 @@ export function PdfStudyApp() {
                 </div>
               </div>
             )}
+
+            {/* 요구사항 입력 텍스트박스 */}
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="user-requirements"
+                className="text-sm font-medium text-foreground"
+              >
+                📝 추가 요구사항 <span className="font-normal text-muted-foreground">(선택 · AI가 최우선으로 반영합니다)</span>
+              </label>
+              <textarea
+                id="user-requirements"
+                value={userRequirements}
+                onChange={(e) => setUserRequirements(e.target.value)}
+                disabled={isLoading}
+                rows={3}
+                placeholder={
+                  mode === "summary"
+                    ? "예) 3장 열역학 부분에 집중해줘 / 수식과 예시를 최대한 많이 써줘 / 어려운 용어는 쉽게 풀어써줘"
+                    : "예) 3장 문제 위주로 내줘 / 계산 문제 위주로 출제해줘 / 고난이도 문제로 구성해줘"
+                }
+                className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+              />
+            </div>
 
             {/* [예외 처리: 상태 표시] Processing 중 모든 버튼 비활성화 */}
             <Button

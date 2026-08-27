@@ -139,7 +139,8 @@ function formatKoreanErrorMessage(err: unknown): string {
 export async function generateSummaryClient(
   files: File[],
   customApiKey?: string,
-  preferredModel: string = DEFAULT_GEMINI_MODEL
+  preferredModel: string = DEFAULT_GEMINI_MODEL,
+  userRequirements?: string
 ): Promise<string> {
   validateUpload(files)
 
@@ -147,8 +148,12 @@ export async function generateSummaryClient(
   const genAI = new GoogleGenerativeAI(apiKey)
   const fileParts = await Promise.all(files.map(fileToGenerativePart))
 
+  const userReqSection = userRequirements && userRequirements.trim()
+    ? `\n\n[사용자 요구사항 (최우선 반영)]\n사용자가 다음 요구사항을 직접 입력했습니다. 반드시 아래 내용을 우선적으로 반영하여 정리 노트를 작성하세요:\n${userRequirements.trim()}`
+    : ""
+
   const prompt = `당신은 대학 강의 및 학술 자료를 종합 정리하는 최고 수준의 AI 학습 도우미입니다.
-사용자가 업로드한 여러 개의 PDF 문서 내용을 바탕으로, 가독성과 학습 효과가 뛰어난 통합 정리 노트를 한국어 Markdown 형식으로 작성하세요.
+사용자가 업로드한 여러 개의 PDF 문서 내용을 바탕으로, 가독성과 학습 효과가 뛰어난 통합 정리 노트를 한국어 Markdown 형식으로 작성하세요.${userReqSection}
 
 [시각 자료 및 표/도표 활용 필수 지침 (매우 중요)]
 1. 핵심 비교 & 데이터 정리: 문서에 등장하는 핵심 개념, 수치, 비교 대상, 비교 항목은 적극적으로 Markdown 표(| 항목 | 설명 | 비고 |)로 정리하세요. 최소 2개 이상의 비교/정리 표를 포함하세요.
@@ -198,7 +203,8 @@ export async function generateSummaryClient(
 export async function generateQuizClient(
   files: File[],
   customApiKey?: string,
-  preferredModel: string = DEFAULT_GEMINI_MODEL
+  preferredModel: string = DEFAULT_GEMINI_MODEL,
+  userRequirements?: string
 ): Promise<QuizQuestion[]> {
   validateUpload(files)
 
@@ -206,8 +212,12 @@ export async function generateQuizClient(
   const genAI = new GoogleGenerativeAI(apiKey)
   const fileParts = await Promise.all(files.map(fileToGenerativePart))
 
+  const userReqSection = userRequirements && userRequirements.trim()
+    ? `\n\n[사용자 요구사항 (최우선 반영)]\n사용자가 다음 요구사항을 직접 입력했습니다. 반드시 아래 내용을 우선적으로 반영하여 퀴즈를 출제하세요:\n${userRequirements.trim()}`
+    : ""
+
   const prompt = `당신은 대학 강의 자료로 시험 문제를 출제하는 전문 출제자입니다.
-사용자가 업로드한 여러 개의 PDF 문서 내용을 바탕으로, 실전 대비용 객관식 문제 10개를 한국어로 출제하세요.
+사용자가 업로드한 여러 개의 PDF 문서 내용을 바탕으로, 실전 대비용 객관식 문제 10개를 한국어로 출제하세요.${userReqSection}
 
 [응답 제약]
 퀴즈 생성 시 프론트엔드 채점 로직이 깨지지 않도록, 반드시 아래 JSON 배열 포맷만 출력해야 합니다:
