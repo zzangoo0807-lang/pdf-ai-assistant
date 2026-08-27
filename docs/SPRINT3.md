@@ -40,3 +40,19 @@
 
 - [x] [PDF로 저장하기] 클릭 시 브라우저 인쇄 미리보기에 정리 노트 본문만 깔끔하게 A4 레이아웃으로 표시됨
 - [x] API 처리 중 모든 UI 컴포넌트 비활성화 및 스피너 정상 표시
+- [x] 로컬스토리지 기반 API Key 저장/수정 인터랙션 정상 작동
+
+---
+
+## 5. 검증 결과 및 테스트 로그 (Verification Log)
+
+```bash
+# 1. TypeScript 정적 타입 검사
+$ cmd /c npx tsc --noEmit
+# Exit Code: 0 (오류 0건)
+
+# 2. Next.js 빌드 시 스타일 및 CSS 번들링 무결성 검증
+$ cmd /c npm run build
+# Exit Code: 0
+# Route (app): / (Static) prerendered with globals.css print rules
+```

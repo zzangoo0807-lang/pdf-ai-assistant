@@ -55,3 +55,25 @@
 - [x] 통합 정리 모드에서 Markdown 문서가 구조적으로 출력됨
 - [x] 퀴즈 모드에서 10문제가 정확한 JSON 포맷으로 생성되어 렌더링됨
 - [x] 문제를 섞은 후에도 각 문제의 고유 `id`에 맞춰 채점 및 해설이 정확하게 매칭됨
+- [x] 미풀이 문항 채점 제출 시 예외 안내 팝업 정상 작동
+
+---
+
+## 5. 검증 결과 및 테스트 로그 (Verification Log)
+
+```bash
+# 1. TypeScript 정적 타입 검사
+$ cmd /c npx tsc --noEmit
+# Exit Code: 0 (오류 0건)
+
+# 2. Strict JSON 파싱, 고유 ID 채점 및 셔플 리셋 단위 검증 (test-sprint2.js)
+$ cmd /c node test-sprint2.js
+=== Sprint 2 Unit & Integration Verification ===
+PASS 1: Cleanly parsed markdown-wrapped JSON -> questions count: 2
+PASS 2: Initial score calculated by ID -> 1 / 2 (expected: 1)
+PASS 3: Score after shuffling questions by ID -> 1 (expected equal to initialScore: 1)
+PASS 3 SUCCESS: Shuffle preserves exact ID-based scoring!
+PASS 4: Partial answer check -> hasUnanswered: false
+PASS 4: Partial answer check -> hasUnanswered: true
+=== All Sprint 2 Verification Tests Completed Successfully ===
+```

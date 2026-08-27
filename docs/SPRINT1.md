@@ -45,3 +45,22 @@
 - [x] Next.js 서버 라우트를 거치지 않고 브라우저에서 Gemini 1.5 Flash 모델로 PDF 데이터가 전송되는 클라이언트 파이프라인 구축 완료
 - [x] 10MB를 초과하는 파일 선택 시 API 요청 전 단계에서 차단 동작 확인
 - [x] TypeScript 컴파일 (`npx tsc --noEmit`) 무결성 및 단위 검증 테스트 통과
+
+---
+
+## 5. 검증 결과 및 테스트 로그 (Verification Log)
+
+```bash
+# 1. TypeScript 정적 타입 검사
+$ cmd /c npx tsc --noEmit
+# Exit Code: 0 (오류 0건)
+
+# 2. 용량 차단 및 파일 전처리 단위 검증 (test-sprint1.js)
+$ cmd /c npx tsx test-sprint1.js
+=== Sprint 1 validation tests ===
+PASS: Empty files threw expected error -> 최소 하나 이상의 PDF 파일을 업로드해주세요.
+PASS: >10MB file threw expected error -> 일회당 처리 가능한 분량을 초과했습니다. 분석을 차단합니다. (10MB 초과)
+PASS: >15,000 text length threw expected error -> 일회당 처리 가능한 분량을 초과했습니다. 분석을 차단합니다. (15,000자 초과)
+PASS: Valid file and text passed validation
+=== All Sprint 1 Validation Tests Finished ===
+```

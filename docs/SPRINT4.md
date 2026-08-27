@@ -40,3 +40,30 @@
 
 - [x] 모든 예외 케이스 및 PRD 요구사항 체크리스트 100% 통과
 - [x] `tsc` 정적 검사 및 `npm run build` 배포 검사 완료
+
+---
+
+## 5. 종합 검증 결과 및 테스트 로그 (Verification Log)
+
+```bash
+# 1. TypeScript 정적 타입 검사
+$ cmd /c npx tsc --noEmit
+# Exit Code: 0 (오류 0건)
+
+# 2. Next.js 프로덕션 정적 빌드
+$ cmd /c npm run build
+# Exit Code: 0
+▲ Next.js 16.3.3 (Turbopack)
+✓ Compiled successfully in 10.6s
+✓ Generating static pages using 4 workers (3/3) in 1080ms
+Route (app)
+┌ ○ /
+└ ○ /_not-found
+○ (Static) prerendered as static content
+
+# 3. 4종 예외 케이스 및 제약 로직 테스트 통과
+- 빈 입력 검사: PASS
+- 용량 10MB/15,000자 초과 차단: PASS
+- 미풀이 문항 채점 팝업 플래그: PASS
+- Processing 로딩 중 비활성화: PASS
+```
