@@ -7,7 +7,18 @@ import { GoogleGenerativeAI, type Part } from "@google/generative-ai"
 export const MAX_TOTAL_UPLOAD_BYTES = 10 * 1024 * 1024 // 10MB
 export const MAX_TEXT_LENGTH = 15000 // 15,000자
 
-export const GEMINI_MODEL_NAME = "gemini-1.5-flash"
+export const DEFAULT_GEMINI_MODEL = "gemini-1.5-flash"
+export const GEMINI_MODEL_NAME = DEFAULT_GEMINI_MODEL
+
+// Google AI Studio 모델 404 및 일시적 과부하 대응을 위한 자동 폴백 모델 목록
+export const CANDIDATE_GEMINI_MODELS = [
+  "gemini-1.5-flash",
+  "gemini-1.5-flash-latest",
+  "gemini-2.0-flash",
+  "gemini-2.5-flash",
+  "gemini-1.5-pro",
+  "gemini-1.5-flash-8b",
+]
 
 export interface QuizQuestion {
   id: number
@@ -83,27 +94,56 @@ function getApiKey(customApiKey?: string): string {
 
   if (!apiKey || apiKey.trim() === "" || apiKey === "your_gemini_api_key_here") {
     throw new Error(
-      "Gemini API 키가 설정되지 않았습니다. .env.local에 NEXT_PUBLIC_GEMINI_API_KEY를 설정해주세요."
+      "Gemini API 키가 설정되지 않았습니다. 상단 [Gemini API 키 설정] 버튼을 눌러 API 키를 입력해주세요."
     )
   }
   return apiKey.trim()
 }
 
 /**
+ * 모델 미지원(404), 과부하(503), 할당량(429) 에러 시 다음 모델로 자동 폴백하는 판별 헬퍼
+ */
+function isFallbackableError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err)
+  return (
+    msg.includes("404") ||
+    msg.includes("not found") ||
+    msg.includes("is not supported") ||
+    msg.includes("ModelService.ListModels") ||
+    msg.includes("503") ||
+    msg.includes("overloaded") ||
+    msg.includes("429") ||
+    msg.includes("quota")
+  )
+}
+
+function formatKoreanErrorMessage(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err)
+  if (msg.includes("404") || msg.includes("not found")) {
+    return "API Key에서 지원하는 Gemini 모델을 찾을 수 없습니다. 상단 설정에서 다른 모델을 선택하거나 Google AI Studio 키를 확인해주세요."
+  }
+  if (msg.includes("API 키") || msg.includes("API key") || msg.includes("401") || msg.includes("403")) {
+    return "유효하지 않은 Gemini API 키입니다. 상단 [Gemini API 키 설정]에서 올바른 키를 입력해주세요."
+  }
+  if (msg.includes("503") || msg.includes("overloaded")) {
+    return "Gemini API 서버에 일시적 과부하가 발생했습니다. 잠시 후 다시 시도해 주세요."
+  }
+  return msg
+}
+
+/**
  * [기술적 제약 사항 1: 백엔드/서버리스 금지]
- * 브라우저 클라이언트에서 직접 Gemini API(gemini-1.5-flash) 호출하여 통합 정리 노트 생성
+ * 브라우저 클라이언트에서 직접 Gemini API 호출하여 통합 정리 노트 생성 (404/과부하 발생 시 자동 폴백)
  */
 export async function generateSummaryClient(
   files: File[],
-  customApiKey?: string
+  customApiKey?: string,
+  preferredModel: string = DEFAULT_GEMINI_MODEL
 ): Promise<string> {
-  // [기술적 제약 사항 4] 사전 용량 검증
   validateUpload(files)
 
   const apiKey = getApiKey(customApiKey)
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL_NAME })
-
   const fileParts = await Promise.all(files.map(fileToGenerativePart))
 
   const prompt = `당신은 대학 강의 자료를 정리해주는 전문 학습 도우미입니다.
@@ -122,32 +162,43 @@ export async function generateSummaryClient(
 - 문서에 실제로 존재하는 내용만 사용하고, 근거 없는 내용을 지어내지 마세요.
 - 총 ${files.length}개의 PDF 문서 내용을 빠짐없이 통합 정리해 주세요.`
 
-  const response = await model.generateContent([prompt, ...fileParts])
-  const resultText = response.response.text()
+  const modelsToTry = [
+    preferredModel,
+    ...CANDIDATE_GEMINI_MODELS.filter((m) => m !== preferredModel),
+  ]
 
-  return resultText
+  let lastError: unknown = null
+  for (const modelName of modelsToTry) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName })
+      const response = await model.generateContent([prompt, ...fileParts])
+      return response.response.text()
+    } catch (err) {
+      lastError = err
+      if (isFallbackableError(err)) {
+        console.warn(`[Gemini Model Fallback] '${modelName}' 감지 -> 대체 모델 시도 중...`)
+        continue
+      }
+      throw new Error(formatKoreanErrorMessage(err))
+    }
+  }
+
+  throw new Error(formatKoreanErrorMessage(lastError))
 }
 
 /**
  * [기술적 제약 사항 1: 백엔드/서버리스 금지 & 응답 제약 JSON]
- * 브라우저 클라이언트에서 직접 Gemini API(gemini-1.5-flash) 호출하여 10문항 객관식 퀴즈 생성
+ * 브라우저 클라이언트에서 직접 Gemini API 호출하여 10문항 객관식 퀴즈 생성 (404/과부하 발생 시 자동 폴백)
  */
 export async function generateQuizClient(
   files: File[],
-  customApiKey?: string
+  customApiKey?: string,
+  preferredModel: string = DEFAULT_GEMINI_MODEL
 ): Promise<QuizQuestion[]> {
-  // [기술적 제약 사항 4] 사전 용량 검증
   validateUpload(files)
 
   const apiKey = getApiKey(customApiKey)
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({
-    model: GEMINI_MODEL_NAME,
-    generationConfig: {
-      responseMimeType: "application/json",
-    },
-  })
-
   const fileParts = await Promise.all(files.map(fileToGenerativePart))
 
   const prompt = `당신은 대학 강의 자료로 시험 문제를 출제하는 전문 출제자입니다.
@@ -173,29 +224,53 @@ export async function generateQuizClient(
 5. 문서의 핵심 개념, 정의, 수치, 응용 사례를 골고루 다루어 난이도를 다양하게 구성하세요.
 6. JSON 이외의 설명이나 마크다운 백틱 문장을 일체 포함하지 마세요.`
 
-  const response = await model.generateContent([prompt, ...fileParts])
-  let rawJson = response.response.text().trim()
+  const modelsToTry = [
+    preferredModel,
+    ...CANDIDATE_GEMINI_MODELS.filter((m) => m !== preferredModel),
+  ]
 
-  // 마크다운 코드블록 래핑 방어 처리
-  if (rawJson.startsWith("```json")) {
-    rawJson = rawJson.replace(/^```json\s*/, "").replace(/\s*```$/, "")
-  } else if (rawJson.startsWith("```")) {
-    rawJson = rawJson.replace(/^```\s*/, "").replace(/\s*```$/, "")
+  let lastError: unknown = null
+  for (const modelName of modelsToTry) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
+      })
+
+      const response = await model.generateContent([prompt, ...fileParts])
+      let rawJson = response.response.text().trim()
+
+      if (rawJson.startsWith("```json")) {
+        rawJson = rawJson.replace(/^```json\s*/, "").replace(/\s*```$/, "")
+      } else if (rawJson.startsWith("```")) {
+        rawJson = rawJson.replace(/^```\s*/, "").replace(/\s*```$/, "")
+      }
+
+      const parsed = JSON.parse(rawJson)
+      if (!Array.isArray(parsed)) {
+        throw new Error("AI 응답이 배열 형식이 아닙니다.")
+      }
+
+      return parsed.map((item, idx) => ({
+        id: typeof item.id === "number" ? item.id : idx + 1,
+        question: String(item.question || ""),
+        options: Array.isArray(item.options)
+          ? item.options.map(String)
+          : ["보기 1", "보기 2", "보기 3", "보기 4"],
+        answer: typeof item.answer === "number" ? item.answer : 1,
+        explanation: String(item.explanation || ""),
+      }))
+    } catch (err) {
+      lastError = err
+      if (isFallbackableError(err)) {
+        console.warn(`[Gemini Model Fallback] '${modelName}' 감지 -> 대체 모델 시도 중...`)
+        continue
+      }
+      throw new Error(formatKoreanErrorMessage(err))
+    }
   }
 
-  const parsed = JSON.parse(rawJson)
-  if (!Array.isArray(parsed)) {
-    throw new Error("AI 응답이 배열 형식이 아닙니다.")
-  }
-
-  // 1-based index 정규화 및 id 보장
-  return parsed.map((item, idx) => ({
-    id: typeof item.id === "number" ? item.id : idx + 1,
-    question: String(item.question || ""),
-    options: Array.isArray(item.options)
-      ? item.options.map(String)
-      : ["보기 1", "보기 2", "보기 3", "보기 4"],
-    answer: typeof item.answer === "number" ? item.answer : 1,
-    explanation: String(item.explanation || ""),
-  }))
+  throw new Error(formatKoreanErrorMessage(lastError))
 }

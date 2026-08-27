@@ -45,6 +45,8 @@ import {
   validateUpload,
   MAX_TOTAL_UPLOAD_BYTES,
   ValidationError,
+  DEFAULT_GEMINI_MODEL,
+  CANDIDATE_GEMINI_MODELS,
   type QuizQuestion,
 } from "@/lib/gemini-client"
 
@@ -62,6 +64,7 @@ export function PdfStudyApp() {
   const [isLoading, setIsLoading] = useState(false)
   const [apiKeyInput, setApiKeyInput] = useState("")
   const [showApiKeyInput, setShowApiKeyInput] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_GEMINI_MODEL)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // 정리 모드 결과
@@ -151,7 +154,7 @@ export function PdfStudyApp() {
       // [기술적 제약 사항 4] 10MB / 15,000자 사전 차단 검증
       validateUpload(files)
 
-      const result = await generateSummaryClient(files, apiKeyInput)
+      const result = await generateSummaryClient(files, apiKeyInput, selectedModel)
       setSummaryText(result)
       toast.success("통합 정리 노트가 생성되었습니다.")
     } catch (err) {
@@ -180,7 +183,7 @@ export function PdfStudyApp() {
       // [기술적 제약 사항 4] 10MB / 15,000자 사전 차단 검증
       validateUpload(files)
 
-      const fetchedQuestions = await generateQuizClient(files, apiKeyInput)
+      const fetchedQuestions = await generateQuizClient(files, apiKeyInput, selectedModel)
       setQuestions(fetchedQuestions)
       toast.success("10개의 문제가 생성되었습니다.")
     } catch (err) {
@@ -285,9 +288,9 @@ export function PdfStudyApp() {
             출제하고 즉시 채점해 드립니다.
           </p>
 
-          {/* 클라이언트 API Key 입력 바 (선택 사항) */}
+          {/* 클라이언트 API Key 입력 바 및 모델 선택 (선택 사항) */}
           {showApiKeyInput && (
-            <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
+            <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <input
                   type="password"
@@ -298,6 +301,23 @@ export function PdfStudyApp() {
                 />
                 <span className="text-xs text-muted-foreground">
                   (키는 브라우저 로컬스토리지에만 저장됩니다)
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 border-t border-border/50 pt-2 text-xs">
+                <span className="font-medium text-muted-foreground">우선 선택 모델:</span>
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className="rounded border border-input bg-background px-2.5 py-1 text-xs font-mono font-medium focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  {CANDIDATE_GEMINI_MODELS.map((m) => (
+                    <option key={m} value={m}>
+                      {m} {m === DEFAULT_GEMINI_MODEL ? "(기본 / 자동 폴백)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-muted-foreground">
+                  (404 에러나 미지원 발생 시 작동 가능한 대체 모델로 자동 전환됩니다)
                 </span>
               </div>
             </div>
