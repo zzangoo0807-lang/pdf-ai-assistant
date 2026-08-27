@@ -7,17 +7,17 @@ import { GoogleGenerativeAI, type Part } from "@google/generative-ai"
 export const MAX_TOTAL_UPLOAD_BYTES = 10 * 1024 * 1024 // 10MB
 export const MAX_TEXT_LENGTH = 15000 // 15,000자
 
-export const DEFAULT_GEMINI_MODEL = "gemini-1.5-flash"
+export const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
 export const GEMINI_MODEL_NAME = DEFAULT_GEMINI_MODEL
 
-// Google AI Studio 모델 404 및 일시적 과부하 대응을 위한 자동 폴백 모델 목록
+// Google AI Studio 최신 모델 버전 지원 및 자동 폴백 후보 목록
 export const CANDIDATE_GEMINI_MODELS = [
+  "gemini-3.6-flash",
+  "gemini-3.7-flash",
   "gemini-1.5-flash",
   "gemini-1.5-flash-latest",
-  "gemini-2.0-flash",
-  "gemini-2.5-flash",
+  "gemini-3.6-pro",
   "gemini-1.5-pro",
-  "gemini-1.5-flash-8b",
 ]
 
 export interface QuizQuestion {
@@ -110,6 +110,7 @@ function isFallbackableError(err: unknown): boolean {
     msg.includes("not found") ||
     msg.includes("is not supported") ||
     msg.includes("ModelService.ListModels") ||
+    msg.includes("is no longer available") ||
     msg.includes("503") ||
     msg.includes("overloaded") ||
     msg.includes("429") ||
@@ -119,7 +120,7 @@ function isFallbackableError(err: unknown): boolean {
 
 function formatKoreanErrorMessage(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err)
-  if (msg.includes("404") || msg.includes("not found")) {
+  if (msg.includes("404") || msg.includes("not found") || msg.includes("is no longer available")) {
     return "API Key에서 지원하는 Gemini 모델을 찾을 수 없습니다. 상단 설정에서 다른 모델을 선택하거나 Google AI Studio 키를 확인해주세요."
   }
   if (msg.includes("API 키") || msg.includes("API key") || msg.includes("401") || msg.includes("403")) {
@@ -133,7 +134,7 @@ function formatKoreanErrorMessage(err: unknown): string {
 
 /**
  * [기술적 제약 사항 1: 백엔드/서버리스 금지]
- * 브라우저 클라이언트에서 직접 Gemini API 호출하여 통합 정리 노트 생성 (404/과부하 발생 시 자동 폴백)
+ * 브라우저 클라이언트에서 직접 Gemini API 호출하여 통합 정리 노트 생성 (gemini-3.6-flash 및 자동 폴백 지원)
  */
 export async function generateSummaryClient(
   files: File[],
@@ -176,7 +177,7 @@ export async function generateSummaryClient(
     } catch (err) {
       lastError = err
       if (isFallbackableError(err)) {
-        console.warn(`[Gemini Model Fallback] '${modelName}' 감지 -> 대체 모델 시도 중...`)
+        console.warn(`[Gemini Model Fallback] '${modelName}' 오류 감지 -> 다음 모델(${modelsToTry[modelsToTry.indexOf(modelName) + 1] || 'done'}) 시도 중...`)
         continue
       }
       throw new Error(formatKoreanErrorMessage(err))
@@ -188,7 +189,7 @@ export async function generateSummaryClient(
 
 /**
  * [기술적 제약 사항 1: 백엔드/서버리스 금지 & 응답 제약 JSON]
- * 브라우저 클라이언트에서 직접 Gemini API 호출하여 10문항 객관식 퀴즈 생성 (404/과부하 발생 시 자동 폴백)
+ * 브라우저 클라이언트에서 직접 Gemini API 호출하여 10문항 객관식 퀴즈 생성 (gemini-3.6-flash 및 자동 폴백 지원)
  */
 export async function generateQuizClient(
   files: File[],
@@ -265,7 +266,7 @@ export async function generateQuizClient(
     } catch (err) {
       lastError = err
       if (isFallbackableError(err)) {
-        console.warn(`[Gemini Model Fallback] '${modelName}' 감지 -> 대체 모델 시도 중...`)
+        console.warn(`[Gemini Model Fallback] '${modelName}' 오류 감지 -> 다음 모델 시도 중...`)
         continue
       }
       throw new Error(formatKoreanErrorMessage(err))
