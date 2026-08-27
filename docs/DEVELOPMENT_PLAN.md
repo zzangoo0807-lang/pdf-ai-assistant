@@ -15,7 +15,7 @@
 | **제약 1** | **백엔드/서버리스 금지** | Vercel의 Serverless 용량(4.5MB) 및 실행 시간(10초) 제한을 회피하기 위해, API Route를 거치지 않고 브라우저 클라이언트에서 직접 Gemini API(`gemini-1.5-flash`)를 호출 (`NEXT_PUBLIC_GEMINI_API_KEY` 활용) |
 | **제약 2** | **경량 PDF 저장 (`@media print`)** | `html2pdf.js` 등 번들 크기가 큰 무거운 라이브러리 사용을 전면 배제하고, `window.print()`와 CSS `@media print`를 통해 브라우저 네이티브 A4 인쇄/PDF 저장 구현 |
 | **제약 3** | **고유 ID 기반 채점 및 셔플 리셋** | 문제 배열 인덱스가 아닌 문항 고유 `id` 기준으로 사용자 답안 state(`Record<number, number>`)를 바인딩하고, [문제 섞어 다시 풀기] 시 답안 state를 완벽 초기화 |
-| **제약 4** | **클라이언트 사전 용량 차단** | API 호출 전 브라우저단에서 파일 총합 10MB 초과 또는 텍스트 15,000자 초과 여부를 즉시 검사하여 조건 미달 시 요청 전면 차단 및 경고 토스트/알림 노출 |
+| **제약 4** | **클라이언트 사전 용량 차단** | API 호출 전 브라우저단에서 파일 총합 50MB 초과 또는 텍스트 100,000자 초과 여부를 즉시 검사하여 조건 미달 시 요청 전면 차단 및 경고 토스트/알림 노출 |
 
 ---
 
@@ -73,7 +73,7 @@ gantt
 | **제약 1** | 백엔드/서버리스 금지 | `lib/gemini-client.ts`, `components/pdf-study-app.tsx` | Next.js API Routes 완전 제거, 클라이언트에서 직접 `@google/generative-ai` 호출 |
 | **제약 2** | 네이티브 인쇄 / `@media print` | `app/globals.css`, `components/pdf-study-app.tsx` | `window.print()` 호출, `@media print` A4 규격 및 `.print:hidden` 완벽 적용 |
 | **제약 3** | 고유 ID 기반 퀴즈 채점 & 셔플 리셋 | `components/pdf-study-app.tsx` | `q.id`를 키로 답안 저장, 셔플 시 `setUserAnswers({})` 초기화 |
-| **제약 4** | 용량 및 텍스트량 사전 차단 | `lib/gemini-client.ts`, `components/pdf-study-app.tsx` | 파일 10MB / 텍스트 15,000자 초과 검증 후 사전 throw 및 Alert 차단 |
+| **제약 4** | 용량 및 텍스트량 사전 차단 | `lib/gemini-client.ts`, `components/pdf-study-app.tsx` | 파일 50MB / 텍스트 100,000자 초과 검증 후 사전 throw 및 Alert 차단 |
 
 ---
 
@@ -83,7 +83,7 @@ gantt
 | :--- | :--- | :--- | :--- |
 | **정적 타입 검사** | `cmd /c npx tsc --noEmit` | 컴파일 에러 0건 통과 | ✅ PASS |
 | **프로덕션 번들 빌드** | `cmd /c npm run build` | Next.js 16 Static 정적 생성 완료 | ✅ PASS |
-| **사전 용량 검증 (Sprint 1)** | `cmd /c npx tsx test-sprint1.js` | 10MB / 15,000자 초과 차단 4종 검증 통과 | ✅ PASS |
+| **사전 용량 검증 (Sprint 1)** | `cmd /c npx tsx test-sprint1.js` | 50MB / 100,000자 초과 차단 4종 검증 통과 | ✅ PASS |
 | **Strict JSON & 셔플 채점 (Sprint 2)** | `cmd /c node test-sprint2.js` | JSON 백틱 방어, 고유 ID 채점/셔플 보존 통과 | ✅ PASS |
 | **인쇄 스타일 & UI 비활성화 (Sprint 3)** | CSS `@media print` / `isLoading` 상태 바인딩 | A4 규격 및 인쇄 은닉, 로딩 제어 적용 완료 | ✅ PASS |
 | **PRD 필수 4종 예외 (Sprint 4)** | Toast / AlertDialog / Disabled 상태 점검 | 4종 시나리오 100% 처리 확인 | ✅ PASS |
